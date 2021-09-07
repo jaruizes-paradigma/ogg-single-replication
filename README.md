@@ -67,7 +67,7 @@ sh build.sh
 
 Una vez ejecutado el script y creada la infraestructura, tendremos todo lo necesario para implementar el proceso de replicación. Como salida del script de Terraform, obtendremos algo parecido a lo siguiente:
 
-![Salida Terraform](readme/img/salida_terraform.jpg)
+![Salida Terraform](readme/img/salida_terraform.png)
 
 
 
@@ -1105,5 +1105,3 @@ Después, ejecutamos dentro del contenedor el comando:
 ```bash
 sh destroy.sh
 ```
-
-
