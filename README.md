@@ -2,16 +2,18 @@
 
 Repositorio correspondiente al post de replicación unidireccional con GoldenGate.
 
-# Requisitos
+## Requisitos
 
 Para poder ejecutar este ejemplo necesitas;
 
 - Docker
 - Credenciales de consola de un usuario de AWS con permiso para manejar EC2, RDS Oracle, MSK, VPC, Security Groups
 
-# Creando la infraestructura base
+<br/>
 
-## Infraestructura en AWS
+## Creando la infraestructura base
+
+### Infraestructura en AWS
 
 Para facilitar la “puesta en escena” del caso de uso vamos a usar los servicios de bases de datos gestionadas (RDS) para disponer de una base de datos Oracle y una base de datos Postgresql. 
 
@@ -23,7 +25,7 @@ A continuación vamos a detallar los pasos a seguir
 
 
 
-### Generando la clave SSH
+#### Generando la clave SSH
 
 El script de Terraform necesita un par de claves para crear las instancias EC2 y nosotros usaremos la clave SSH posteriomente para conectarnos a las instancias. 
 
@@ -37,7 +39,7 @@ Dentro del directorio “iac/ssh” se crearán dos ficheros correspondientes a 
 
 
 
-### Creando la infraestructura con Terraform
+#### Creando la infraestructura con Terraform
 
 Para ejecutar las acciones de creación y destrucción de la infraestructura nos vamos a apoyar en una imagen Docker que contiene Terraform y todo lo necesario para levantar la infraestructura. Solo necesitaremos las credenciales de AWS
 
@@ -69,9 +71,9 @@ Una vez ejecutado el script y creada la infraestructura, tendremos todo lo neces
 
 ![Salida Terraform](readme/img/salida_terraform.png)
 
+<br/>
 
-
-## Creando el modelo de datos inicial en Oracle
+### Creando el modelo de datos inicial en Oracle
 
 Una vez que tenemos la infraestructura creada y levantada, vamos a crear el modelo de datos en Oracle para poder partir del escenario inicial planteado en el caso de uso. Para conectarse a la base de datos podemos usar cualquier cliente compatible. Los datos de conexión son los siguientes:
 
@@ -125,7 +127,7 @@ COMMIT;
 
 
 
-## Creando el modelo de datos destino
+### Creando el modelo de datos destino
 
 La siguientes líneas corresponden al script SQL para crear el modelo de datos destino:
 
@@ -159,13 +161,13 @@ create table empresas.customers
 
 
 
-<br/>
+<br/><br/>
 
-# Preparando las base de datos para replicación
+## Preparando las base de datos para replicación
 
 
 
-## Preparando la base de datos Oracle
+### Preparando la base de datos Oracle
 
 Para que el proceso de replicación sea posible necesitamos configurar la base de datos Oracle. Para ello, lanzamos las siguientes sentencias SQL contra la base de datos Oracle:
 
@@ -215,7 +217,7 @@ exec rdsadmin.rdsadmin_util.alter_supplemental_logging('ADD','PRIMARY KEY');
 
 
 
-## Preparando la base de datos Postgresql
+### Preparando la base de datos Postgresql
 
 De forma similar al punto anterior, en Postgresql también tenemos que crear el usuario asociado a GoldenGate. Para ello se debe lanzar el siguiente script contra la base de datos Postgresql:
 
@@ -236,11 +238,11 @@ create schema ogg;
 alter schema ogg owner to oggadm1;
 ```
 
+<br/><br/>
 
+## Instalando Oracle GoldenGate Classic
 
-# Instalando Oracle GoldenGate Classic
-
-## Ficheros necesarios
+### Ficheros necesarios
 
 - **Distribución de Oracle GoldenGate Classic**
   Debes descargar la release de Oracle GoldenGate Classic desde la [página oficial de Oracle](https://www.oracle.com/es/middleware/technologies/goldengate-downloads.html). 
@@ -255,9 +257,9 @@ alter schema ogg owner to oggadm1;
 
 
 
-## Instalación y configuración de Oracle GoldenGate Classic
+### Instalación y configuración de Oracle GoldenGate Classic
 
-### Instalando el producto
+#### Instalando el producto
 
 Una vez copiados los ficheros, nos conectamos a la máquina por SSH (en la salida del script de Terraform, aparece como “oracle_ggc_public_ip”).
 
@@ -318,7 +320,7 @@ export LD_LIBRARY_PATH=/home/ec2-user/oracle_instant_client_19c
 
 
 
-### Configurando el acceso a base de datos
+#### Configurando el acceso a base de datos
 
 Para que Oracle GoldenGate Classic pueda acceder a la base de datos Oracle es necesario configurar la conexión. Esto se realiza mediante el fichero "*tnsnames.ora*". Para ello, creamos el fichero “tnsnames.ora” en el directorio “/home/ec2-user/tnsnames”:
 
@@ -348,7 +350,7 @@ export TNS_ADMIN=/home/ec2-user/tnsnames
 
 
 
-### Creando la estructura inicial de directorios para GoldenGate Classic
+#### Creando la estructura inicial de directorios para GoldenGate Classic
 
 Una vez que hemos terminado la instalación como tal, vamos a ejecutar el intérprete de comandos de Oracle GoldenGate, GGSCI. Para ello, nos conectamos a la máquina de nuevo y ejecutamos:
 
@@ -367,7 +369,7 @@ Como resultado se generarán todos los directorios que Oracle GoldenGate necesit
 
 
 
-### Creando el almacén de credenciales
+#### Creando el almacén de credenciales
 
 En Oracle GoldenGate podemos definir un almacén de credenciales para asociar un alias a los datos de conexión a la base de datos (usuario / password) y, hacer referencia al alias en los procesos de extracción o replicación. Para crear el almacén de credenciales, entramos en GGSCI y ejecutamos:
 
@@ -385,7 +387,7 @@ alter credentialstore add user oggadm1@ORARDS, password oggadm1, alias orards
 
 
 
-### Inicializando el componente Manager
+#### Inicializando el componente Manager
 
 El Manager es un componente principal de GoldenGate que se encarga de arrancar, parar, monitorizar o lanzar errores de los diferentes elementos. Para inicializar este componente, al igual que con el resto de elementos de GoldenGate, usamos GGSCI. Lo primero que tenemos que hacer es definir sus parámetros, en este caso, el puerto. Para ello, dentro de GGSCI, ejecutamos:
 
@@ -416,7 +418,7 @@ y verificamos que está en estado RUNNING
 
 
 
-### Comprobando la instalación
+#### Comprobando la instalación
 
 Podemos hacer una pequeña prueba para ver que todo se ha instalado y configurado correctamente. Para ello, vamos a intentar hacer login en la base de datos Oracle utilizando el almacén de credenciales. Desde GGSCI lanzamos:
 
@@ -428,13 +430,13 @@ Si todo está correcto, veremos un mensaje indicando que se ha hecho login en la
 
 
 
+<br/><br/>
+
+## Instalando Oracle GoldenGate Postgresql
 
 
-# Instalando Oracle GoldenGate Postgresql
 
-
-
-## Ficheros necesarios
+### Ficheros necesarios
 
 Similar a la instalación de Oracle GoldenGate Classic, es necesario descargar los siguientes ficheros:
 
@@ -442,7 +444,7 @@ Similar a la instalación de Oracle GoldenGate Classic, es necesario descargar l
 
 
 
-## Instalación de GoldenGate Postgresql en EC2
+### Instalación de GoldenGate Postgresql en EC2
 
 Una vez descargado y copiado al EC2, accedemos al EC2 (IP mostrada en la variable "oracle_ggc_postgresql_public_ip" de la salida de Terraform) mediante ssh para proceder a la instalación. Creamos el directorio donde lo vamos a instalar y descomprimimos el ZIP y el TAR:
 
@@ -459,9 +461,9 @@ Una vez descomprimido, creamos la siguiente variable de entorno:
 export LD_LIBRARY_PATH=/home/ec2-user/gg-postgresql/lib
 ```
 
+<br/>
 
-
-## Creando la estructura inicial de directorios
+### Creando la estructura inicial de directorios
 
 Al igual que hicimos en la instalación de Oracle GoldenGate Classic, en GoldenGate Postgresql también debemos generar la estructura de directorios inicial, mediante la ejecución del siguiente comando desde GGSCI:
 
@@ -473,7 +475,7 @@ El resultado del comando generará todos los directorios necesarios
 
 
 
-## Abriendo los puertos del firewall
+### Abriendo los puertos del firewall
 
 Oracle GoldenGate Postgresql debe aceptar las conexiones desde Oracle GoldenGate Classic. 
 Para este ejemplo vamos a abrir un rango de puertos amplio, aunque sería posible definir en el Manager qué puertos son los elegidos para las conexiones.Ejecutamos desde el terminal de la instancia EC2 de GoldenGate Postgresql los siguientes comandos:
@@ -485,7 +487,7 @@ sudo firewall-cmd --reload
 
 
 
-## Configurando la conexión a la base de datos (ODBC)
+### Configurando la conexión a la base de datos (ODBC)
 
 Para que GoldenGate Postgresql pueda conectar a la base de datos, se necesita configurar la conexión mediante ODBC. Para ello, creamos el fichero “obdc.ini”:
 
@@ -523,7 +525,7 @@ export ODBCINI=/home/ec2-user/gg-postgresql/odbc.ini
 
 
 
-## Inicializando el Manager
+### Inicializando el Manager
 
 En este caso, como hicimos con GoldenGate Classic, también debemos inicializar el componente Manager en la instancia de GoldenGate Postgresql. Lo primero es definir sus parámetros escribiendo en GGSCI:
 
@@ -552,11 +554,13 @@ Podemos comprobar que efectivamente está levantado mediante el comando:
 info mgr
 ```
 
-# Implementando el proceso de carga inicial
+<br/><br/>
+
+## Implementando el proceso de carga inicial
 
 
 
-## Creando el extract en GG Classic
+### Creando el extract en GG Classic
 
 Lo primero que tenemos que hacer es crear el “extract” en GoldenGate Classic. Para ello, nos conectamos de nuevo a la máquina EC2 de GoldenGate Classic y volvemos a entrar en GGSCI:
 
@@ -567,7 +571,7 @@ cd /home/ec2-user/ggc
 
 
 
-## Creando el fichero de parámetros
+### Creando el fichero de parámetros
 
 El primer paso es definir los parámetros del “extract”. Tal y como hemos determinado en el apartado de diseño, lo vamos a llamar “einiload”. Para ello, en GGSCI, escribimos el siguiente comando:
 
@@ -597,7 +601,7 @@ En este fichero de parámetros, estamos estableciendo que:
 
 
 
-## Creando el extract
+### Creando el extract
 
 Una vez hemos definido el fichero de parámetros, tenemos que crear realmente el extract. Para ello, ejecutamos los siguientes pasos dentro de GGSCI:
 
@@ -617,7 +621,7 @@ Una vez hemos definido el fichero de parámetros, tenemos que crear realmente el
 
    
 
-## Creando el replicat en GG Postgresql
+### Creando el replicat en GG Postgresql
 
 Una vez configurada la parte correspondiente al origen, es decir, GoldenGate Classic, tenemos que configurar la parte correspondiente al destino, GG Postgresql, que se encargará de la carga inicialCreando el fichero de parámetros.
 
@@ -664,7 +668,7 @@ En este fichero estamos diciendo que
 
 
 
-## Creando el replicat
+### Creando el replicat
 
 El siguiente paso consiste en la creación del replicat asociado al fichero de parámetros. Para ello, en GGSCI, escribimos:
 
@@ -677,15 +681,15 @@ Como se ha comentado anteriormente, en la carga inicial, el replicat no es un pr
 
 
 
+<br/><br/>
 
+## Implementando el proceso de CDC
 
-# Implementando el proceso de CDC
-
-## Creando el extract (en GG Classic)
+### Creando el extract (en GG Classic)
 
 Nos conectamos de a la máquina EC2 de GoldenGate Classic y entramos en GGSCI
 
-### Creando el fichero de parámetros
+#### Creando el fichero de parámetros
 
 De forma similar a como lo hemos hecho en la carga inicial, tenemos que crear el fichero de parámetros asociados al extract. Tal y como hemos determinado en el apartado de diseño, lo vamos a llamar “ecdcora” y de este modo, intentar indicar con los ocho caracteres que permite GoldenGate, que es el extract primario correspondiente al proceso de CDC desde Oracle. Escribimos el siguiente comando:
 
@@ -713,7 +717,7 @@ En este fichero de parámetros, estamos diciendo a GoldenGate que:
 
 
 
-### Creando el extract
+#### Creando el extract
 
 Una vez hemos definido el fichero de parámetros, tenemos que crear el extract. Para ello, ejecutamos los siguientes pasos dentro de GGSCI: 
 
@@ -771,13 +775,17 @@ Obteniendo un resultado similar al de la imagen:
 
 ![img](readme/img/extract_up_running.png)
 
-## Creando el data pump (en GG Classic)
+<br/>
+
+### Creando el data pump (en GG Classic)
 
 Una vez que tenemos el extract, tenemos que configurar el data pump o extract secundario. Este elemento, leerá de los ficheros locales de trail y generará los ficheros remotos de trail. De forma similar a todos los elementos anteriores, lo primero que tenemos que hacer es definir los parámetros. Para ello, ejecutamos:
 
 ```
 edit params pcdcora
 ```
+
+
 
 En el editor que se abre, escribimos:
 
@@ -788,6 +796,8 @@ rmthost #IP_PRIVADA_EC2_GG_POSTGRESQL#, mgrport 28710
 rmttrail ./dirdat/rt
 table oracledb.customers;
 ```
+
+
 
 Debemos reemplazar #IP_PRIVADA_EC2_GG_POSTGRESQL# por el valor que tenga en la salida del script de Terraform. En concreto, la clave: “oracle_ggc_postgresql_private_ip”
 
@@ -836,7 +846,9 @@ obteniendo un resultado similar al siguiente:
 
 ![img](readme/img/datapump_up_running.png)
 
-## Creando el Replicat (en GG Postgresql)
+<br/>
+
+### Creando el Replicat (en GG Postgresql)
 
 Una vez que hemos configurado la parte “origen” tenemos que configurar el “Replicat” para que replique los datos en Postgresql, cada parte en su tabla correspondiente (particulares / empresas)
 
@@ -892,11 +904,11 @@ start rcdcorainfo rcdcora
 
 
 
+<br/><br/>
 
+## Probando el proceso de replicación
 
-# Probando el proceso de replicación
-
-## Ejecutando la carga inicial
+### Ejecutando la carga inicial
 
 Para lanzar el proceso, lo tenemos que hacer desde el origen, es decir, desde GoldenGate Classic. Para ello, nos conectamos a la máquina EC2 donde está instalado GoldenGate Classic, y accedemos a GGSCI. Una vez dentro, arrancamos el extract de carga inicial:
 
@@ -906,7 +918,7 @@ start einiload
 
 
 
-### Verificando el proceso en el origen
+#### Verificando el proceso en el origen
 
 Para verificar que el proceso se ha lanzado correctamente, ejecutamos en GoldenGate Classic:
 
@@ -930,7 +942,9 @@ Al final del informe nos aparecen los datos detallados:
 
 ![img](readme/img/iniload_extract_report.png)
 
-### Verificando el proceso en el destino
+<br/>
+
+#### Verificando el proceso en el destino
 
 En el lado de Postgresql podemos hacer algo similar. Nos conectamos al EC2 donde está instalado GG Postgresql y entramos en GGSCI:
 
@@ -959,13 +973,13 @@ En el caso de empresas:
 
 ![img](readme/img/tabla2.png)
 
+<br/>
 
-
-## Probando la replicación de datos
+### Probando la replicación de datos
 
 Una vez que hemos lanzado la carga inicial y comprobado que ambos extremos están sincronizados, podemos probar el proceso de replicación.
 
-### Insertando nuevos datos
+#### Insertando nuevos datos
 
 Lanzamos las siguientes sentencias INSERT sobre la tabla Oracle:
 
@@ -987,7 +1001,7 @@ Y verificamos que se ha insertado la nueva fila en empresas.
 
 
 
-### Actualizando datos
+#### Actualizando datos
 
 A continuación vamos a probar que los datos se actualizan también en tiempo real. Para ello, lanzamos estas dos sentencias sobre la base de datos Oracle:
 
@@ -1008,7 +1022,7 @@ A continuación, comprobamos lo mismo en la tabla CUSTOMERS del esquema empresas
 
 
 
-### Eliminando datos
+#### Eliminando datos
 
 Por último vamos a probar que también se reflejan los cambios correspondientes a los DELETES. Para ello, lanzamos estas sentencias sobre la base de datos Oracle:
 
@@ -1025,9 +1039,9 @@ Hacemos lo correspondiente en empresas, comprobando que no existe una fila con I
 
 ![img](readme/img/cdc_test_6.png)
 
+<br/>
 
-
-## Comprobando las estadísticas de GoldenGate
+### Comprobando las estadísticas de GoldenGate
 
 Podemos acceder tanto a GoldenGate Classic, que está conectado al origen (Oracle) como a GoldenGate Postgresql, conectado al destino (Postgresql) para comprobar las estadísticas. Durante el proceso de replicación hemos realizado:
 
@@ -1037,7 +1051,7 @@ Podemos acceder tanto a GoldenGate Classic, que está conectado al origen (Oracl
 
 Lo podemos comprobar mediante las estadísticas de GoldenGate
 
-### Estadísticas en el origen
+#### Estadísticas en el origen
 
 Primero comprobamos las del extract primario (ecdcora) lanzando, en GGSCI, el comando:
 
@@ -1049,6 +1063,8 @@ Vemos que el resultado coincide con lo esperado:
 
 ![img](readme/img/stats_1.png)
 
+<br/>
+
 Podemos hacer lo mismo con el extract secundario o data pump, lanzando:
 
 ```
@@ -1059,9 +1075,9 @@ El resultado también es el esperado:
 
 ![img](readme/img/stats_2.png)
 
+<br/>
 
-
-### Estadísticas en el destino
+#### Estadísticas en el destino
 
 En destino, tenemos que separar las estadísticas por esquema, ya que según la columna TIPO, los datos se replican en un esquema o en otro. Resumiendo, los datos esperados son:
 
@@ -1085,9 +1101,9 @@ Y si comprobamos las correspondientes a empresas, vemos que también se cumplen 
 
 ![img](readme/img/stats_4.png)
 
+<br/><br/>
 
-
-# Destruyendo la infraestructura
+## Destruyendo la infraestructura
 
 Una vez terminada la prueba, para destruir la infraestructura basta con lanzar el script de destrucción, desde el contenedor Docker que creamos al inicio. Si nos hemos salido, basta con ejecutar:
 
