@@ -834,7 +834,7 @@ info ecdcora
 
 Obteniendo un resultado similar al de la imagen:
 
-![img](/Users/jaruiz/Dev/Paradigma/goldengate-posts/ogg-single-replication/readme/img/extract_up_running.png)
+![img](readme/img/extract_up_running.png)
 
 ## Creando el data pump (en GG Classic)
 
@@ -899,7 +899,7 @@ info pcdcora
 
 obteniendo un resultado similar al siguiente:
 
-![img](/Users/jaruiz/Dev/Paradigma/goldengate-posts/ogg-single-replication/readme/img/datapump_up_running.png)
+![img](readme/img/datapump_up_running.png)
 
 ## Creando el Replicat (en GG Postgresql)
 
