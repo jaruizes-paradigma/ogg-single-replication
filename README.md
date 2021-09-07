@@ -677,69 +677,6 @@ Como se ha comentado anteriormente, en la carga inicial, el replicat no es un pr
 
 
 
-# Ejecutando la carga inicial
-
-Para lanzar el proceso, lo tenemos que hacer desde el origen, es decir, desde GoldenGate Classic. Para ello, nos conectamos a la máquina EC2 donde está instalado GoldenGate Classic, y accedemos a GGSCI. Una vez dentro, arrancamos el extract de carga inicial:
-
-```bash
-start einiload
-```
-
-
-
-## Verificando el proceso en el origen
-
-Para verificar que el proceso se ha lanzado correctamente, ejecutamos en GoldenGate Classic:
-
-```
-info einiload
-```
-
-
-Debemos ver que ha procesado 8 registros:
-
-![img](readme/img/iniload_extract.png)
-
-Si queremos ver más detalle, podemos ejecutar:
-
-```
-view report einiload
-```
-
-
-Al final del informe nos aparecen los datos detallados:
-
-![img](readme/img/iniload_extract_report.png)
-
-## Verificando el proceso en el destino
-
-En el lado de Postgresql podemos hacer algo similar. Nos conectamos al EC2 donde está instalado GG Postgresql y entramos en GGSCI:
-
-```
-cd /home/ec2-user/gg-postgresql
-./ggsci
-```
-
-
-Dentro del intérprete, si escribimos “info riniload” no vamos a obtener mucha información. Tenemos que ir directamente al informe, ejecutando:
-
-```
-view report riniload
-```
-
-
-En el informe, podemos encontrar las estadísticas y verificar que se han realizado ocho inserciones, de las cuales, cinco han ido al esquema de particulares y tres al esquema de empresas:
-
-![img](readme/img/rniload_report.png)
-
-Por último, vamos a comprobar que realmente los datos se han replicado correctamente en Postgresql, cada uno la tabla correspondiente. Por ejemplo, en el caso de particulares:
-
-![img](readme/img/tabla1.png)
-
-En el caso de empresas:
-
-![img](readme/img/tabla2.png)
-
 
 
 # Implementando el proceso de CDC
@@ -952,4 +889,221 @@ Por último, arrancamos el replicat y comprobamos que arranca correctamente:
 ```
 start rcdcorainfo rcdcora
 ```
+
+
+
+
+
+# Probando el proceso de replicación
+
+## Ejecutando la carga inicial
+
+Para lanzar el proceso, lo tenemos que hacer desde el origen, es decir, desde GoldenGate Classic. Para ello, nos conectamos a la máquina EC2 donde está instalado GoldenGate Classic, y accedemos a GGSCI. Una vez dentro, arrancamos el extract de carga inicial:
+
+```bash
+start einiload
+```
+
+
+
+### Verificando el proceso en el origen
+
+Para verificar que el proceso se ha lanzado correctamente, ejecutamos en GoldenGate Classic:
+
+```
+info einiload
+```
+
+
+Debemos ver que ha procesado 8 registros:
+
+![img](readme/img/iniload_extract.png)
+
+Si queremos ver más detalle, podemos ejecutar:
+
+```
+view report einiload
+```
+
+
+Al final del informe nos aparecen los datos detallados:
+
+![img](readme/img/iniload_extract_report.png)
+
+### Verificando el proceso en el destino
+
+En el lado de Postgresql podemos hacer algo similar. Nos conectamos al EC2 donde está instalado GG Postgresql y entramos en GGSCI:
+
+```
+cd /home/ec2-user/gg-postgresql
+./ggsci
+```
+
+
+Dentro del intérprete, si escribimos “info riniload” no vamos a obtener mucha información. Tenemos que ir directamente al informe, ejecutando:
+
+```
+view report riniload
+```
+
+
+En el informe, podemos encontrar las estadísticas y verificar que se han realizado ocho inserciones, de las cuales, cinco han ido al esquema de particulares y tres al esquema de empresas:
+
+![img](readme/img/rniload_report.png)
+
+Por último, vamos a comprobar que realmente los datos se han replicado correctamente en Postgresql, cada uno la tabla correspondiente. Por ejemplo, en el caso de particulares:
+
+![img](readme/img/tabla1.png)
+
+En el caso de empresas:
+
+![img](readme/img/tabla2.png)
+
+
+
+## Probando la replicación de datos
+
+Una vez que hemos lanzado la carga inicial y comprobado que ambos extremos están sincronizados, podemos probar el proceso de replicación.
+
+### Insertando nuevos datos
+
+Lanzamos las siguientes sentencias INSERT sobre la tabla Oracle:
+
+```sql
+insert into customers (nif, email, telefono, nombre, tipo) values ('00000000h', 'nuevo_particular@email.com', '123456789', 'nuevo particular', 1);
+insert into customers (cif, email, telefono, razonsocial, tipo, descripcion, representante) values ('b76785789', 'nueva_empresa@email.com', '000000000', 'empresa nueva', 2, 'descripción empresa nueva', 'representante empresa nueva');
+commit;
+```
+
+Si recuperamos los datos de la tabla en Oracle, vemos que se han insertado correctamente. Pero lo importante es comprobar en Postgresql que se han replicado los datos. Primero en “particulares”:
+
+![img](readme/img/cdc_test_1.png)
+
+Efectivamente vemos que se ha insertado la nueva fila en particulares. A continuación, hacemos lo mismo en “empresas”:
+
+![img](readme/img/cdc_test_2.png)
+
+Y verificamos que se ha insertado la nueva fila en empresas.
+
+
+
+### Actualizando datos
+
+A continuación vamos a probar que los datos se actualizan también en tiempo real. Para ello, lanzamos estas dos sentencias sobre la base de datos Oracle:
+
+```sql
+update oracledb.customers set nombre = 'test1 - upd' where id=1;
+update oracledb.customers set descripcion = 'descripción empresa', representante = "representante empresa" where id in (6,7,8);
+commit;
+```
+
+El resultado de esta acción debe ser una fila de particulares actualizada (ID = 1) en la columna nombre y tres filas de empresas actualizadas (IDs 6,7 y 8) en las columnas DESCRIPCION y REPRESENTANTE
+Comprobamos primero, en Postgresql y el esquema particulares, que se ha actualizado el nombre de la fila con ID = 1:
+
+![img](readme/img/cdc_test_3.png)
+
+A continuación, comprobamos lo mismo en la tabla CUSTOMERS del esquema empresas, que todas tienen valor en las columnas DESCRIPCION y REPRESENTANTE como resultado de la acción de actualización en Oracle:
+
+![img](readme/img/cdc_test_4.png)
+
+
+
+### Eliminando datos
+
+Por último vamos a probar que también se reflejan los cambios correspondientes a los DELETES. Para ello, lanzamos estas sentencias sobre la base de datos Oracle:
+
+```sql
+delete oracledb.customers where id in (9,10);
+commit;
+```
+
+Comprobamos que se han eliminado en Postgresql las filas con las que hemos estado trabajando. Primero en particulares, no debe existir una fila con ID = 9:
+
+![img](readme/img/cdc_test_5.png)
+
+Hacemos lo correspondiente en empresas, comprobando que no existe una fila con ID = 10:
+
+![img](readme/img/cdc_test_6.png)
+
+
+
+## Comprobando las estadísticas de GoldenGate
+
+Podemos acceder tanto a GoldenGate Classic, que está conectado al origen (Oracle) como a GoldenGate Postgresql, conectado al destino (Postgresql) para comprobar las estadísticas. Durante el proceso de replicación hemos realizado:
+
+- INSERTS: 2
+- UPDATES: 4
+- DELETES: 2
+
+Lo podemos comprobar mediante las estadísticas de GoldenGate
+
+### Estadísticas en el origen
+
+Primero comprobamos las del extract primario (ecdcora) lanzando, en GGSCI, el comando:
+
+```
+stats ecdcora
+```
+
+Vemos que el resultado coincide con lo esperado:
+
+![img](readme/img/stats_1.png)
+
+Podemos hacer lo mismo con el extract secundario o data pump, lanzando:
+
+```
+stats pcdcora
+```
+
+El resultado también es el esperado:
+
+![img](readme/img/stats_2.png)
+
+
+
+### Estadísticas en el destino
+
+En destino, tenemos que separar las estadísticas por esquema, ya que según la columna TIPO, los datos se replican en un esquema o en otro. Resumiendo, los datos esperados son:
+
+- INSERTS: 2 (total) → 1 en particulares y 1 en empresas
+- UPDATES: 4 (total) → 1 en particulares y 3 en empresas
+- DELETES: 2 (total) → 1 en particulares y 2 en empresas 
+
+
+
+Para comprobarlo, en GGSCI de la máquina de GoldenGate Postgresql lanzamos:
+
+```
+stats rcdcora
+```
+
+Si tomamos las estadísticas correspondientes a “particulares” vemos que se cumple lo esperado:
+
+![img](readme/img/stats_3.png)
+
+Y si comprobamos las correspondientes a empresas, vemos que también se cumplen los valores esperados:
+
+![img](readme/img/stats_4.png)
+
+
+
+# Destruyendo la infraestructura
+
+Una vez terminada la prueba, para destruir la infraestructura basta con lanzar el script de destrucción, desde el contenedor Docker que creamos al inicio. Si nos hemos salido, basta con ejecutar:
+
+```bash
+docker run -it --rm -e KEY_ID=<AWS_USER_KEY_ID> -e SECRET_ID=<AWS_SECRET_KEY_ID> -v $(pwd)/iac:/root/iac --entrypoint /bin/bash ogg_infra_builder
+```
+
+reemplazando 
+
+- AWS_USER_KEY_ID: valor de la KEY del usuario de AWS
+- AWS_SECRET_KEY_ID: valor de la SECRET del usuario de AWS
+
+Después, ejecutamos dentro del contenedor el comando:
+
+```bash
+sh destroy.sh
+```
+
 
