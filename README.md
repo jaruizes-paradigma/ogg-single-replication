@@ -125,9 +125,49 @@ COMMIT;
 
 
 
-# Preparando la base de datos Oracle para replicación
+## Creando el modelo de datos destino
 
-Para que el proceso de replicación sea posible necesitamos configurar la base de datos Oracle. Para ello, lanzamos las siguientes sentencias SQL:
+La siguientes líneas corresponden al script SQL para crear el modelo de datos destino:
+
+```sql
+create schema particulares;
+alter schema particulares owner to postgres;
+
+create table particulares.customers
+(
+	id serial not null constraint customers_pk primary key,
+	nif varchar not null,
+	nombre varchar not null,
+	email varchar not null,
+	telefono varchar not null
+);
+
+create schema empresas;
+alter schema empresas owner to postgres;
+
+create table empresas.customers
+(
+	id serial not null constraint customers_pk primary key,
+	cif varchar not null,
+	razonsocial varchar not null,
+	email varchar not null,
+	telefono varchar not null,
+	descripcion varchar not null,
+	representante varchar not null
+);
+```
+
+
+
+<br/>
+
+# Preparando las base de datos para replicación
+
+
+
+## Preparando la base de datos Oracle
+
+Para que el proceso de replicación sea posible necesitamos configurar la base de datos Oracle. Para ello, lanzamos las siguientes sentencias SQL contra la base de datos Oracle:
 
 ```
 ALTER TABLE CUSTOMERS ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
@@ -172,6 +212,29 @@ exec rdsadmin.rdsadmin_util.alter_supplemental_logging('ADD','PRIMARY KEY');
 ```
 
 > **ATENCIÓN:** El script está preparado para ser lanzado en una base de datos AWS RDS Oracle, que es la que utilizamos en este ejemplo. De ahí las sentencias del tipo “exec rdsadmin.“
+
+
+
+## Preparando la base de datos Postgresql
+
+De forma similar al punto anterior, en Postgresql también tenemos que crear el usuario asociado a GoldenGate. Para ello se debe lanzar el siguiente script contra la base de datos Postgresql:
+
+```sql
+create user oggadm1;
+alter user oggadm1 with password 'oggadm1';
+grant connect on database ggdemo to oggadm1;
+grant usage on schema particulares to oggadm1;
+grant usage on schema empresas to oggadm1;
+grant rds_replication to oggadm1;
+grant all privileges on all tables in schema particulares to oggadm1;
+grant all privileges on all sequences in schema particulares to oggadm1;
+grant all privileges on all tables in schema empresas to oggadm1;
+grant all privileges on all sequences in schema empresas to oggadm1;
+grant all privileges on database "ggdemo" to oggadm1;
+
+create schema ogg;
+alter schema ogg owner to oggadm1;
+```
 
 
 
@@ -364,71 +427,6 @@ dblogin useridalias orards
 Si todo está correcto, veremos un mensaje indicando que se ha hecho login en la base de datos.
 
 
-
-# Preparando la base de datos Postgresql para la replicación
-
-La base de datos, al igual que Oracle, se ha creado en AWS RDS. Podemos conectarnos con cualquier cliente. Los parámetros de conexión son los siguientes:
-
-- **Host**: valor de la variable de salida de Terraform "postgresql_endpoint"
-- **Database**: ggdemo
-- **User/Passw**: postgres / postgres
-
-
-
-## Creando el modelo de datos destino
-
-La siguientes líneas corresponden al script SQL para crear el modelo de datos destino:
-
-```sql
-create schema particulares;
-alter schema particulares owner to postgres;
-
-create table particulares.customers
-(
-	id serial not null constraint customers_pk primary key,
-	nif varchar not null,
-	nombre varchar not null,
-	email varchar not null,
-	telefono varchar not null
-);
-
-create schema empresas;
-alter schema empresas owner to postgres;
-
-create table empresas.customers
-(
-	id serial not null constraint customers_pk primary key,
-	cif varchar not null,
-	razonsocial varchar not null,
-	email varchar not null,
-	telefono varchar not null,
-	descripcion varchar not null,
-	representante varchar not null
-);
-```
-
-
-
-## Creando el usuario asociado a GoldenGate
-
-Para crear el usuario asociado a GoldenGate se debe lanzar el siguiente script:
-
-```sql
-create user oggadm1;
-alter user oggadm1 with password 'oggadm1';
-grant connect on database ggdemo to oggadm1;
-grant usage on schema particulares to oggadm1;
-grant usage on schema empresas to oggadm1;
-grant rds_replication to oggadm1;
-grant all privileges on all tables in schema particulares to oggadm1;
-grant all privileges on all sequences in schema particulares to oggadm1;
-grant all privileges on all tables in schema empresas to oggadm1;
-grant all privileges on all sequences in schema empresas to oggadm1;
-grant all privileges on database "ggdemo" to oggadm1;
-
-create schema ogg;
-alter schema ogg owner to oggadm1;
-```
 
 
 
