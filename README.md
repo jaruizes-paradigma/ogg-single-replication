@@ -1121,3 +1121,4 @@ Después, ejecutamos dentro del contenedor el comando:
 ```bash
 sh destroy.sh
 ```
+
